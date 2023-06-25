@@ -1,0 +1,37 @@
+
+citHeader("To cite package 'irboost' in publications use:")
+
+year <- sub(".*(2[[:digit:]]{3})-.*", "\\1", meta$Date)
+vers <- meta$Version
+
+bibentry(bibtype ="Manual",
+         title = "irboost: Iteratively Reweighted Boosting for Robust Analysis",
+         author = c(person("Zhu","Wang", role = c("aut", "cre"),
+         email = "zwang145@uthsc.edu")),
+         year = year,
+         note = paste("{R} package version", vers),
+         url = "https://CRAN.R-project.org/package=irboost",
+         key = "irboost-package",
+         textVersion =
+             paste("Zhu Wang (",
+                   year,
+                   "). 
+                   irboost: Iteratively Reweighted Boosting for Robust Analysis
+                   , ",
+                   paste("R package version", vers),
+                   ", https://CRAN.R-project.org/package=irboost", ".",
+                   sep=""))
+
+bibentry(bibtype = "Article",
+          title =  "{Unified Robust Boosting}",
+          author = as.person("Zhu Wang [aut]"),
+          journal      = "arXiv",
+          year         = "2021",
+          key          = "irboost-article",
+          url          = "https://arxiv.org/abs/2101.07718",
+          textVersion =
+          paste("Zhu Wang (2021).",
+                "Unified Robust Boosting.", "arXiv:2101.07718."),
+          )
+
+citFooter('Use ', sQuote('toBibtex(citation("irboost"))'), ' to extract BibTeX references.')

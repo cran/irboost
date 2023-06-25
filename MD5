@@ -1,4 +1,4 @@
-44c68e4decb83b507eb86bac19443dcf *DESCRIPTION
+3d3d68d7a57171f120e5b32b704cae07 *DESCRIPTION
 e1a360ae1d0c2d4deada5b52d747f252 *NAMESPACE
 00b297d27c91385a79463532b06368f4 *NEWS
 c0070877f734286aeef7ed58ce6480b2 *R/aftloss.R
@@ -8,6 +8,7 @@ ed0c77a860c71e8bab0e8e8cbed899f5 *R/irboost_aft.R
 33c00ab8b0a3c4371cd85731d3aef94f *R/probability_distribution.R
 bb5612590a226542f36c0c2406bd901f *README.md
 f074115eb06840a69bf0bf9be522a416 *build/vignette.rds
+c71635e23b3f20db3221ebaf301f7732 *inst/CITATION
 b770b4c3950c5c572dc68adfe0c14c08 *inst/doc/static_irbst.pdf
 3440a18276f47861a976a4fe50acba54 *inst/doc/static_irbst.pdf.asis
 fdfbc89e68cba685e43bb628437c015e *man/dataLS.Rd
