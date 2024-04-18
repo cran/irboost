@@ -1,3 +1,83 @@
+@article{wang2021unified,
+title = {Unified Robust Boosting},
+author = {Wang, Zhu},
+journal={arXiv preprint arXiv:2101.07718},
+year = {2021},
+note =  {\url{https://arxiv.org/abs/2101.07718}}
+}
+
+@article{mairal2013stochastic,
+   title={Stochastic majorization-minimization algorithms for large-scale        optimization},
+   author={Mairal, Julien},
+   journal={Advances in Neural Information Processing Systems},
+   volume={26},
+   year={2013}
+ }
+
+@inproceedings{zhao2010convex,
+  title={From convex to nonconvex: a loss function analysis for binary classification},
+  author={Zhao, Lei and Mammadov, Musa and Yearwood, John},
+  booktitle={2010 IEEE international conference on data mining workshops},
+  pages={1281--1288},
+  year={2010},
+  organization={IEEE}
+}
+@article{wu2007robust,
+   title={Robust truncated hinge loss support vector machines},
+   author={Wu, Yichao and Liu, Yufeng},
+   journal={Journal of the American Statistical Association},
+   volume={102},
+   number={479},
+   pages={974--983},
+   year={2007}
+ }
+@article{park2011robust,
+   title={Robust penalized logistic regression with truncated loss functions},
+   author={Park, Seo Young and Liu, Yufeng},
+   journal={Canadian Journal of Statistics},
+   volume={39},
+   number={2},
+   pages={300--323},
+   year={2011},
+   publisher={Wiley Online Library}
+ }
+@book{maronna2019robust,
+   title={Robust Statistics: Theory and Methods (with {R})},
+   author={Maronna, Ricardo A and Martin, R Douglas and Yohai, Victor J and      Salibi{\'a}n-Barrera, Mat{\'\i}as},
+   year={2019},
+   publisher={Hoboken, NJ: John Wiley \& Sons}
+ }
+
+@Manual{hothorn2023mboost,
+  title={\pkg{mboost}: Model-Based Boosting},
+  author={Hothorn, Torsten and B{\"u}hlmann, Peter and Kneib, Thomas and Schmid, Matthias and Hofner, Benjamin and Otto-Sobotka, Fabian and Scheipl, Fabian and Mayr, Andreas}, 
+  year={2023},
+note = {\proglang{R} package version 2.9-9},
+url = {https://CRAN.R-project.org/package=mboost},
+}
+@Manual{wang2023bst,
+title = {\pkg{bst}: Gradient Boosting},
+author = {Wang, Zhu and Hothorn, Torsten},
+year = {2023},
+note = {\proglang{R} package version 0.3-24},
+url = {https://CRAN.R-project.org/package=bst}
+}
+@Manual{wang2024irboost,
+title = {\pkg{irboost}: Iteratively Reweighted Boosting for Robust Analysis},
+author = {Wang, Zhu},
+year = {2024},
+note = {\proglang{R} package version 0.1-14},
+url = {https://CRAN.R-project.org/package=irboost}
+}
+@article{li2018boosting,
+       title={Boosting in the presence of outliers: adaptive classification      with nonconvex loss functions},
+         author={Li, Alexander Hanbo and Bradic, Jelena},
+           journal={Journal of the American Statistical Association},
+             pages={1--15},
+           year={2018},
+             publisher={Taylor \& Francis}
+}
+
 @book{heritier2009robust,
    title={{Robust Methods in Biostatistics}},
    author={Heritier, Stephane and Cantoni, Eva and Copt, Samuel and Victoria-    Feser, Maria-Pia},
@@ -16,22 +96,16 @@
   year={2010},
   publisher={Springer}
 }
-@ARTICLE{wang2020unified,
+@ARTICLE{wang2024unified,
         author = {{Wang}, Zhu},
-         title = "{Unified Robust Estimation}",
-       journal = {arXiv e-prints},
+         title = "{Unified robust estimation}",
+       journal = {Australian \& New Zealand Journal of Statistics},
       keywords = {Statistics - Methodology, Statistics - Computation},
-          year = 2020,
-         month = oct,
-           eid = {arXiv:2010.02848},
-         pages = {arXiv:2010.02848},
- archivePrefix = {arXiv},
-        eprint = {2010.02848},
-  primaryClass = {stat.ME},
-         note =  {\url{https://arxiv.org/abs/2010.02848}},
-        adsurl = {https://ui.adsabs.harvard.edu/abs/2020arXiv201002848W},
-       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
- }
+          year = 2024,
+  volume={66},
+  number={1},
+  pages={77--102}
+}
 @article{friedman2000additive,
        title={Additive logistic regression: a statistical view of boosting       (with discussion and a rejoinder by the authors)},
          author={Friedman, Jerome and Hastie, Trevor and Tibshirani, Robert},
@@ -57,7 +131,7 @@
  }
  @ARTICLE{Buhl:Hoth:2007,
    author = {B\"uhlmann, Peter and Hothorn, Torsten},
-   title = {Boosting algorithms: Regularization, prediction and model fitting
+   title = {Boosting algorithms: {Regularization}, prediction and model fitting
      (with discussion)},
    journal = {Statistical Science},
    year = {2007},
@@ -73,9 +147,7 @@
    journal={Electronic Journal of Statistics},
    year={2018},
    volume={12(1)},
-   pages={599-650},
-   url={https://doi.org/10.1214/18-EJS1404},
-   doi={10.1214/18-EJS1404}
+   pages={599-650}
  }
  @article{wang2018quadratic,
    title={Quadratic majorization for nonconvex loss with applications to the     boosting algorithm},
@@ -88,16 +160,22 @@
    publisher={Taylor \& Francis}
  }
 
-@article{sigrist2020gradient,
-       title={Gradient and {Newton} Boosting for Classification and              Regression},
-       author={Fabio Sigrist},
-       year={2020},
-       journal = {arXiv e-prints},
-       eprint={1808.03064},
-       note = {\url{https://arxiv.org/abs/1808.03064}},
-       archivePrefix={arXiv},
-       primaryClass={stat.ML}
- }
+@article{sigrist2021gradient,
+  title={Gradient and {Newton} boosting for classification and regression},
+  author={Sigrist, Fabio},
+  journal={Expert Systems With Applications},
+  volume={167},
+  pages={114080},
+  year={2021},
+  publisher={Elsevier}
+}
+@manual{chen2024xgboost,
+  title={Xgboost: extreme gradient boosting},
+  author={Chen, Tianqi and He, Tong and Benesty, Michael and Khotilovich, Vadim and Tang, Yuan and Cho, Hyunsu and Chen, Kailong and Mitchell, Rory and Cano, Ignacio and Zhou, Tianyi and Li, Mu and Xie, Junyuan and Lin, Min and Geng, Yifeng and Li, Yutian and Yuan, Jiaming and {XGBoost} contributors, {}},
+  year={2024},
+note = {\proglang{R} package version 1.7.7.1},
+url = {https://CRAN.R-project.org/package=xgboost}
+}
 @inproceedings{chen2016xgboost,
    title={Xgboost: {A} scalable tree boosting system},
    author={Chen, Tianqi and Guestrin, Carlos},
@@ -105,9 +183,13 @@
    pages={785--794},
    year={2016}
  }
-@article{barnwal2020survival,
-  title={Survival regression with accelerated failure time model in XGBoost},
-  author={Barnwal, Avinash and Cho, Hyunsu and Hocking, Toby Dylan},
-  journal={arXiv preprint arXiv:2006.04920},
-  year={2020}
+@article{barnwal2022survival,
+  title={Survival regression with accelerated failure time model in {XGBoost}},
+  author={Barnwal, Avinash and Cho, Hyunsu and Hocking, Toby},
+  journal={Journal of Computational and Graphical Statistics},
+  volume={31},
+  number={4},
+  pages={1292--1302},
+  year={2022},
+  publisher={Taylor \& Francis}
 }

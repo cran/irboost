@@ -1,5 +1,5 @@
 # irboost
-Fit a predictive model with the iteratively reweighted boosting (IRBoost) that minimizes the robust loss functions in the CC-family (concave-convex). The convex optimization is conducted by functional descent boosting algorithm in the R package \pkg{xgboost}. The IRBoost reduces the weight of the observation that leads to a large loss; it also provides weights to help identify outliers. Applications include the robust   generalized linear models and extensions, where the mean is related to the predictors by boosting, and robust accelerated failure time models. Wang (2021) <arXiv:2101.07718>.
+Fit a predictive model using the Iteratively Reweighted Boosting   (IRBoost) to minimize robust loss functions within the CC-family (concave-      convex). This constitutes an application of Iteratively Reweighted Convex       Optimization (IRCO), where convex optimization is performed using the           functional descent boosting algorithm. IRBoost assigns weights to facilitate    outlier identification. Applications include robust generalized linear models   and robust accelerated failure time models.
 
 How to generate the vignette document?
 

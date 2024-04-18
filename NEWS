@@ -1,3 +1,43 @@
                 CHANGES in `irboost' VERSION 0.1_1.0   (2022-02-15)
 
-  o  this is formally ccboost. the name change may help users to understand better the algorithm
+  o  this is previously called package ccboost. The name change better helps to understand better the algorithm
+                CHANGES in `irboost' VERSION 0.1_1.3   (2023-08-03)
+
+  o  modify executing check_s following the update of mpath package on function R/check_s
+                CHANGES in `irboost' VERSION 0.1_1.4   (2024-03-06)
+
+  o  vignettes/irbst.Rnw was substantially modified
+  o  how to update Rd? The devtools::document() function updates the NAMESPACE file, and devtools::install() reinstalls the package with the updated documentation.
+     library(roxygen2)
+     roxygen2::roxygenize()
+     devtools::document()
+  o  how to build package?
+     R CMD build --compact-vignettes="both" irboost
+  o  convert irbst.Rnw to irbst_knitr.Rmd
+     https://ulriklyngs.com/post/2021/12/02/how-to-adapt-any-latex-template-for-use-with-r-markdown-in-four-steps/
+       1. Obtain irbst_jds.tex using
+          R CMD Sweave irbst.Rnw
+          cp irbst.tex irbst_jds.tex
+          change $ to $$
+          sed -i 's/\$/\$\$/g' irbst_jds.tex
+          add $body$ in irbst_jds.tex to integrate code in irbst_knitr.Rmd
+
+       2. In irbst_knitr.Rmd with the following lines
+---
+title: "Unified robust boosting"
+output: 
+  bookdown::pdf_document2:
+    template: irbst_jds.tex
+---
+  o  convert irbst.Rnw to irbst.Rmd
+       1. convert Sweave format irbst.Rnw to knitr using ...
+          library(knitr)
+          Sweave2knitr('irbst.Rnw') # you will get irbst-knitr.Rnw by default
+       2. convert irbst-knitr.Rnw to irbst.Rmd using R function Rnw2Rmd from package mdsr
+  o  change $ to $$ in a text file
+     sed -i 's/\$/\$\$/g' your_file.txt
+  o  some parameters in R/irboost.R are now moved to a new argument params, a list of parameters. The argument params in irboost is passed to argument params in xgboost::xgboost
+                CHANGES in `irboost' VERSION 0.1_1.5   (2024-04-17)
+
+  o  move the code part of irbst_knitr.Rmd to irbst_code.Rmd
+  o  remove irbst.Rnw, irbst_jds.tex, irbst_knitr.Rmd and associated latex format files

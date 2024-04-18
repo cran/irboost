@@ -1,112 +1,88 @@
 #' fit a robust predictive model with iteratively reweighted boosting algorithm
 #'
 #' Fit a predictive model with the iteratively reweighted convex optimization (IRCO) that minimizes the robust loss functions in the CC-family (concave-convex). The convex optimization is conducted by functional descent boosting algorithm in the R package \pkg{xgboost}. The iteratively reweighted boosting (IRBoost) algorithm reduces the weight of the observation that leads to a large loss; it also provides weights to help identify outliers. Applications include the robust generalized
-#' linear models and extensions, where the mean is related to the predictors by boosting, and robust accelerated failure time models. 
-#' @param data input data, if \code{objective="survival:aft"}, it must be an \code{xgb.DMatrix}; otherwise, it can be a matrix of dimension nobs x nvars; each row is an observation vector. Can accept \code{dgCMatrix}
-#' @param label response variable. Quantitative for \code{objective="reg:squarederror"},\cr 
-#'        \code{objective="count:poisson"} (non-negative counts) or \code{objective="reg:gamma"} (positive). 
-#'        For \code{objective="binary:logitraw" or "binary:hinge"}, \code{label} should be a factor with two levels
-#' @param weights vector of nobs with non-negative weights 
-#' @param params the list of parameters, \code{params} is passed to function xgboost::xgboost which requires the same argument. The list must include \code{objective}, a convex component in the CC-family, the second C, or convex down. It is the same as \code{objective} in the \code{xgboost::xgboost}. The following objective functions are currently implemented: 
+#' linear models and extensions, where the mean is related to the predictors by boosting, and robust accelerated failure time models. \code{irb.train} is an advanced interface for training an irboost model. The \code{irboost} function is a simpler wrapper for \code{irb.train}. See \code{xgboost::xgb.train}. 
+#' @param data training dataset. \code{irb.train} accepts only an \code{xgboost::xgb.DMatrix} as the input. \code{irboost}, in addition, also accepts \code{matrix}, \code{dgCMatrix}, or name of a local data file. See \code{xgboost::xgb.train}.
+#' @param params the list of parameters, \code{params} is passed to function xgboost::xgb.train which requires the same argument. The list must include \code{objective}, a convex component in the CC-family, the second C, or convex down. It is the same as \code{objective} in the \code{xgboost::xgb.train}. The following objective functions are currently implemented: 
 #'   \itemize{
 #'     \item \code{reg:squarederror} Regression with squared loss.
 #'     \item \code{binary:logitraw} logistic regression for binary classification, predict linear predictor, not probabilies.
 #'     \item \code{binary:hinge} hinge loss for binary classification. This makes predictions of -1 or 1, rather than   producing probabilities.
 #'     \item \code{multi:softprob} softmax loss function for multiclass problems. The result contains predicted probabilities of each data point in each class, say p_k, k=0, ..., nclass-1. Note, \code{label} is coded as in [0, ..., nclass-1]. The loss function cross-entropy for the i-th observation is computed as -log(p_k) with k=lable_i, i=1, ..., n.
 #'     \item \code{count:poisson}: Poisson regression for count data, predict mean of poisson distribution.
-#'     \item \code{reg:gamma}: gamma regression with log-link, predict mean of gamma distribution. The implementation in \code{xgboost} takes a parameterization in the exponential family:\cr
+#'     \item \code{reg:gamma}: gamma regression with log-link, predict mean of gamma distribution. The implementation in \code{xgboost::xgb.train} takes a parameterization in the exponential family:\cr
 #' xgboost/src/src/metric/elementwise_metric.cu.\cr
 #' In particularly, there is only one parameter psi and set to 1. The implementation of the IRCO algorithm follows this parameterization. See Table 2.1, McCullagh and Nelder, Generalized linear models, Chapman & Hall, 1989, second edition.
-#'     \item \code{reg:tweedie}: Tweedie regression with log-link. See also\cr \code{tweedie_variance_power} in range: (1,2). A value close to 2 is like a gamma distribution. A value close to 1 is like a Poisson distribution.
-#'     \item \code{survival:aft}: Accelerated failure time model for censored survival time data. \code{irboost} invokes \code{irb.train_aft}. 
+#'     \item \code{reg:tweedie}: Tweedie regression with log-link. See also \cr 
+#' \code{tweedie_variance_power} in range: (1,2). A value close to 2 is like a gamma distribution. A value close to 1 is like a Poisson distribution.
+#'     \item \code{survival:aft}: Accelerated failure time model for censored survival time data. \code{irb.train} invokes \code{irb.train_aft}. 
 #'}
-#' @param z_init vector of nobs with initial convex component values, must be non-negative with default values = weights if provided, otherwise z_init = vector of 1s 
+#' @param z_init vector of nobs with initial convex component values, must be non-negative with default values = weights if data has provided, otherwise z_init = vector of 1s 
 #' @param cfun concave component of CC-family, can be \code{"hacve", "acave", "bcave", "ccave"}, 
-#' \code{"dcave", "ecave", "gcave", "hcave"}.\cr
-#' See Table 2 at https://arxiv.org/pdf/2010.02848.pdf
+#' \code{"dcave", "ecave", "gcave", "hcave"}.\cr 
+#'  See Table 2 https://arxiv.org/pdf/2010.02848.pdf
 #' @param s tuning parameter of \code{cfun}. \code{s > 0} and can be equal to 0 for \code{cfun="tcave"}. If \code{s} is too close to 0 for    \code{cfun="acave", "bcave", "ccave"}, the calculated weights can become 0 for all observations, thus crash the program
 #' @param delta a small positive number provided by user only if \code{cfun="gcave"} and \code{0 < s <1}
 #' @param iter number of iteration in the IRCO algorithm
 #' @param nrounds boosting iterations within each IRCO iteration
 #' @param del convergency criteria in the IRCO algorithm, no relation to \code{delta}
 #' @param trace if \code{TRUE}, fitting progress is reported
-#' @param ... other arguments passing to \code{xgboost} 
+#' @param ... other arguments passing to \code{xgb.train}
 #' @importFrom stats predict
-#' @importFrom xgboost xgboost
+#' @importFrom xgboost xgb.train
 #' @importFrom mpath compute_wt compute_g loss3 y2num y2num4glm
-#' @return An object with S3 class \code{xgboost} with the additional elments:
+#' @return An object with S3 class \code{xgb.train} with the additional elments:
 #' \itemize{
 #'   \item \code{weight_update_log} a matrix of \code{nobs} row by \code{iter}      column of observation weights in each iteration of the IRCO algorithm
  #'   \item \code{weight_update} a vector of observation weights in the last IRCO iteration that produces the final model fit
-#'   \item\code{loss_log} sum of loss value of the composite function in each IRCO iteration. Note, \code{cfun} requires \code{objective} non-negative in some cases. Thus care must be taken. For instance, with \code{objective="reg:gamma"}, the loss value is defined by gamma-nloglik - (1+log(min(y))), where y=label. The second term is introduced such that the loss value is non-negative. In fact, gamma-nloglik=y/ypre + log(ypre) in the \code{xgboost}, where ypre is the mean prediction value, can
+#'   \item\code{loss_log} sum of loss value of the composite function in each IRCO iteration. Note, \code{cfun} requires \code{objective} non-negative in some cases. Thus care must be taken. For instance, with \code{objective="reg:gamma"}, the loss value is defined by gamma-nloglik - (1+log(min(y))), where y=label. The second term is introduced such that the loss value is non-negative. In fact, gamma-nloglik=y/ypre + log(ypre) in the \code{xgboost::xgb.train}, where ypre is the mean prediction value, can
 #'   be negative. It can be derived that for fixed \code{y}, the minimum value of gamma-nloglik is achived at ypre=y, or 1+log(y). Thus, among all \code{label} values, the minimum of gamma-nloglik is 1+log(min(y)).
 #'}
 #' @author Zhu Wang\cr Maintainer: Zhu Wang \email{zhuwang@gmail.com}
 #' @references Wang, Zhu (2021), \emph{Unified Robust Boosting}, arXiv eprint, \url{https://arxiv.org/abs/2101.07718}
 #' @keywords regression classification
-#' @export irboost
+#' @export irb.train
 #' @examples
 #' \donttest{
-#' # regression, logistic regression, Poisson regression
-#' x <- matrix(rnorm(100*2),100,2)
-#' g2 <- sample(c(0,1),100,replace=TRUE)
-#' fit1 <- irboost(data=x, label=g2, cfun="acave",s=0.5, 
-#'                 params=list(objective="reg:squarederror", max_depth=1), trace=TRUE, 
-#'                 verbose=0, nrounds=50)
-#' fit2 <- irboost(data=x, label=g2, cfun="acave",s=0.5, 
-#'                 params=list(objective="binary:logitraw", max_depth=1), trace=TRUE,  
-#'                 verbose=0, nrounds=50)
-#' fit3 <- irboost(data=x, label=g2, cfun="acave",s=0.5, 
-#'                 params=list(objective="binary:hinge", max_depth=1), trace=TRUE,  
-#'                 verbose=0, nrounds=50)
-#' fit4 <- irboost(data=x, label=g2, cfun="acave",s=0.5, 
-#'                 params=list(objective="count:poisson", max_depth=1), trace=TRUE,      
-#'                 verbose=0, nrounds=50)
+#' # logistic boosting
+#' data(agaricus.train, package='xgboost')
+#' data(agaricus.test, package='xgboost')
 #'
-#' # Gamma regression
-#' x <- matrix(rnorm(100*2),100,2)
-#' g2 <- sample(rgamma(100, 1))
-#' library("xgboost")
-#' param <- list(objective="reg:gamma", max_depth=1)
-#' fit5 <- xgboost(data=x, label=g2, params=param, nrounds=50)
-#' fit6 <- irboost(data=x, label=g2, cfun="acave",s=5, params=param, trace=TRUE, 
-#'                 verbose=0, nrounds=50)
-#' plot(predict(fit5, newdata=x), predict(fit6, newdata=x))
-#' hist(fit6$weight_update)
-#' plot(fit6$loss_log)
-#' summary(fit6$weight_update)
-#' 
-#' # Tweedie regression 
-#' param <- list(objective="reg:tweedie", max_depth=1)
-#' fit6t <- irboost(data=x, label=g2, cfun="acave",s=5, params=param, 
-#'                  trace=TRUE, verbose=0, nrounds=50)
-#' # Gamma vs Tweedie regression
-#' hist(fit6$weight_update)
-#' hist(fit6t$weight_update)
-#' plot(predict(fit6, newdata=x), predict(fit6t, newdata=x))
+#' dtrain <- with(agaricus.train, xgboost::xgb.DMatrix(data, label = label))
+#' dtest <- with(agaricus.test, xgboost::xgb.DMatrix(data, label = label))
+#' watchlist <- list(train = dtrain, eval = dtest)
 #'
-#' # multiclass classification in iris dataset:
-#' lb <- as.numeric(iris$Species)-1
-#' num_class <- 3
-#' set.seed(11)
-#' 
-#' param <- list(objective="multi:softprob", max_depth=4, eta=0.5, nthread=2, 
-#' subsample=0.5, num_class=num_class)
-#' fit7 <- irboost(data=as.matrix(iris[, -5]), label=lb, cfun="acave", s=50,
-#'                 params=param, trace=TRUE, verbose=0, nrounds=10)
-#' # predict for softmax returns num_class probability numbers per case:
-#' pred7 <- predict(fit7, newdata=as.matrix(iris[, -5]))
-#' # reshape it to a num_class-columns matrix
-#' pred7 <- matrix(pred7, ncol=num_class, byrow=TRUE)
-#' # convert the probabilities to softmax labels
-#' pred7_labels <- max.col(pred7) - 1
-#' # classification error: 0!
-#' sum(pred7_labels != lb)/length(lb)
-#' table(lb, pred7_labels)
-#' hist(fit7$weight_update)
+#' # A simple irb.train example:
+#' param <- list(max_depth = 2, eta = 1, nthread = 2, 
+#' objective = "binary:logitraw", eval_metric = "auc")
+#' bst <- xgboost::xgb.train(params=param, data=dtrain, nrounds = 2, 
+#'                           watchlist=watchlist, verbose=2)
+#' bst <- irb.train(params=param, data=dtrain, nrounds = 2)
+#' summary(bst$weight_update)
+#' # a bug in xgboost::xgb.train
+#' #bst <- irb.train(params=param, data=dtrain, nrounds = 2, 
+#' #                 watchlist=watchlist, trace=TRUE, verbose=2) 
 #'
+#' # time-to-event analysis
+#' X <- matrix(1:5, ncol=1)
+#' # Associate ranged labels with the data matrix.
+#' # This example shows each kind of censored labels.
+#' # uncensored  right  left  interval
+#' y_lower = c(10,  15, -Inf, 30, 100)
+#' y_upper = c(Inf, Inf,   20, 50, Inf)
+#' dtrain <- xgboost::xgb.DMatrix(data=X, label_lower_bound=y_lower, 
+#'                                label_upper_bound=y_upper)
+#' param <- list(objective="survival:aft", aft_loss_distribution="normal", 
+#'               aft_loss_distribution_scale=1, max_depth=3, min_child_weight=0)
+#' watchlist <- list(train = dtrain)
+#' bst <- xgboost::xgb.train(params=param, data=dtrain, nrounds=15, 
+#'                           watchlist=watchlist)
+#' predict(bst, dtrain)
+#' bst_cc <- irb.train(params=param, data=dtrain, nrounds=15, cfun="hcave",
+#'                     s=1.5, trace=TRUE, verbose=0)
+#' bst_cc$weight_update
 #' }
-irboost <- function(data, label, weights, params = list(), z_init=NULL, cfun="ccave", s=1, delta=0.1, iter=10, nrounds=100, del=1e-10, trace=FALSE, ...){
+irb.train <- function(params = list(), data, z_init=NULL, cfun="ccave", s=1, delta=0.1, iter=10, nrounds=100, del=1e-10, trace=FALSE, ...){
   call <- match.call()
   dfun <- params$objective
   if(dfun=="survival:aft"){
@@ -114,8 +90,8 @@ irboost <- function(data, label, weights, params = list(), z_init=NULL, cfun="cc
   }
   if(!dfun %in% c("reg:squarederror", "binary:logitraw", "binary:hinge", "multi:softprob", "count:poisson", "reg:gamma", "reg:tweedie"))
     stop("dfun not implemented/applicable")
-  x <- data
-  y <- label
+  #x <- data
+  y <- getinfo(data, "label")
   if(dfun %in% c("reg:gamma") && any(y <= 0))
     stop("response variable y must be positive for dfun ", dfun)
   if(dfun %in% c("binary:logitraw", "binary:hinge")){
@@ -138,7 +114,8 @@ irboost <- function(data, label, weights, params = list(), z_init=NULL, cfun="cc
                     "count:poisson"=8,
                     "reg:gamma"=NULL,
                     "reg:tweedie"=NULL,
-                    "multi:softprob"=NULL)
+                    "multi:softprob"=NULL,
+                    "survival:aft"=NULL)
   eval(parse(text="mpath::check_s(cfun, ifelse(is.null(dfunval), 1, dfunval), s)"))
   d <- 10 
   k <- 1
@@ -148,7 +125,8 @@ irboost <- function(data, label, weights, params = list(), z_init=NULL, cfun="cc
   loss_log <- rep(NA, iter)
   n <- length(y)
   weight_update_log <- matrix(NA, nrow=n, ncol=iter)
-  if(missing(weights)) weights <- rep(1, n)
+  weights <- getinfo(data, "weight")
+  if(is.null(weights)) weights <- rep(1, n)
   if(is.null(z_init)) ylos <- weights else ylos <- z_init #initial values
   if(dfun=="reg:gamma")
     min_nloglik <- 1+log(min(y)) #the minimum value of negative log-likelihood value for a fixed y vector
@@ -158,8 +136,9 @@ irboost <- function(data, label, weights, params = list(), z_init=NULL, cfun="cc
     weight_update <- mpath::compute_wt(ylos, weights, cfunval, s, delta)
     weight_update_log[,k] <- weight_update
     #if(trace) cat("weight_update", weight_update, "\n")
-    RET <- xgboost::xgboost(data=x, label=y, missing = NA, weight=weight_update, params = params, nrounds=nrounds, ...)
-    ypre <- predict(RET, x) #depends on objective, this is probability or response or linear predictor
+    setinfo(data, 'weight', weight_update) #update data weight 
+    RET <- xgboost::xgb.train(params = params, data=data, nrounds=nrounds, ...)
+    ypre <- predict(RET, newdata=data) #depends on objective, this is probability or response or linear predictor
     #update loss values
     if(dfun=="reg:squarederror"){
       ylos <- (ynew - ypre)^2/2
@@ -198,7 +177,6 @@ irboost <- function(data, label, weights, params = list(), z_init=NULL, cfun="cc
     if(trace) cat("loss=", loss_log[k], "d=", d, "\n") 
     k <- k + 1
   }
-  RET$x <- x
   RET$y <- y
   RET$call <- call
   RET$weight_update_log <- weight_update_log

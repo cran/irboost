@@ -31,7 +31,7 @@ bibentry(bibtype = "Article",
           url          = "https://arxiv.org/abs/2101.07718",
           textVersion =
           paste("Zhu Wang (2021).",
-                "Unified Robust Boosting.", "arXiv:2101.07718."),
+                "Unified Robust Boosting.", "arXiv:2101.07718.")
           )
 
 citFooter('Use ', sQuote('toBibtex(citation("irboost"))'), ' to extract BibTeX references.')

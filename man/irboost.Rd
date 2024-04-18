@@ -5,13 +5,14 @@
 \title{fit a robust predictive model with iteratively reweighted boosting algorithm}
 \usage{
 irboost(
-  x,
-  y,
+  data,
+  label,
   weights,
+  params = list(),
+  z_init = NULL,
   cfun = "ccave",
   s = 1,
   delta = 0.1,
-  dfun = "reg:squarederror",
   iter = 10,
   nrounds = 100,
   del = 1e-10,
@@ -20,20 +21,15 @@ irboost(
 )
 }
 \arguments{
-\item{x}{input matrix, of dimension nobs x nvars; each row is an observation vector. Can accept \code{dgCMatrix}}
+\item{data}{input data, if \code{objective="survival:aft"}, it must be an \code{xgb.DMatrix}; otherwise, it can be a matrix of dimension nobs x nvars; each row is an observation vector. Can accept \code{dgCMatrix}}
 
-\item{y}{response variable. Quantitative for \code{dfun="greg:squarederror"}, \code{dfun="count:poisson"} (non-negative counts) or \code{dfun="reg:gamma"} (positive). For \code{dfun="binary:logitraw" or "binary:hinge"}, \code{y} should be a factor with two levels}
+\item{label}{response variable. Quantitative for \code{objective="reg:squarederror"},\cr 
+\code{objective="count:poisson"} (non-negative counts) or \code{objective="reg:gamma"} (positive). 
+For \code{objective="binary:logitraw" or "binary:hinge"}, \code{label} should be a factor with two levels}
 
 \item{weights}{vector of nobs with non-negative weights}
 
-\item{cfun}{concave component of CC-family, can be \code{"hacve", "acave", "bcave", "ccave"}, 
-\code{"dcave", "ecave", "gcave", "hcave"}. See Table 2 in https://arxiv.org/pdf/2010.02848.pdf}
-
-\item{s}{tuning parameter of \code{cfun}. \code{s > 0} and can be equal to 0 for \code{cfun="tcave"}. If \code{s} is too close to 0 for    \code{cfun="acave", "bcave", "ccave"}, the calculated weights can become 0 for all observations, thus crash the program}
-
-\item{delta}{a small positive number provided by user only if \code{cfun="gcave"} and \code{0 < s <1}}
-
-\item{dfun}{type of convex component in the CC-family, the second C, or convex down, that's where the name \code{dfun} comes from. It is the same as \code{objective} in the \code{xgboost} package.
+\item{params}{the list of parameters, \code{params} is passed to function xgboost::xgboost which requires the same argument. The list must include \code{objective}, a convex component in the CC-family, the second C, or convex down. It is the same as \code{objective} in the \code{xgboost::xgboost}. The following objective functions are currently implemented: 
   \itemize{
     \item \code{reg:squarederror} Regression with squared loss.
     \item \code{binary:logitraw} logistic regression for binary classification, predict linear predictor, not probabilies.
@@ -43,8 +39,19 @@ irboost(
     \item \code{reg:gamma}: gamma regression with log-link, predict mean of gamma distribution. The implementation in \code{xgboost} takes a parameterization in the exponential family:\cr
 xgboost/src/src/metric/elementwise_metric.cu.\cr
 In particularly, there is only one parameter psi and set to 1. The implementation of the IRCO algorithm follows this parameterization. See Table 2.1, McCullagh and Nelder, Generalized linear models, Chapman & Hall, 1989, second edition.
-    \item \code{reg:tweedie}: Tweedie regression with log-link. See also \code{tweedie_variance_power} in range: (1,2). A value close to 2 is like a gamma distribution. A value close to 1 is like a Poisson distribution.
+    \item \code{reg:tweedie}: Tweedie regression with log-link. See also\cr \code{tweedie_variance_power} in range: (1,2). A value close to 2 is like a gamma distribution. A value close to 1 is like a Poisson distribution.
+    \item \code{survival:aft}: Accelerated failure time model for censored survival time data. \code{irboost} invokes \code{irb.train_aft}. 
 }}
+
+\item{z_init}{vector of nobs with initial convex component values, must be non-negative with default values = weights if provided, otherwise z_init = vector of 1s}
+
+\item{cfun}{concave component of CC-family, can be \code{"hacve", "acave", "bcave", "ccave"}, 
+\code{"dcave", "ecave", "gcave", "hcave"}.\cr
+See Table 2 at https://arxiv.org/pdf/2010.02848.pdf}
+
+\item{s}{tuning parameter of \code{cfun}. \code{s > 0} and can be equal to 0 for \code{cfun="tcave"}. If \code{s} is too close to 0 for    \code{cfun="acave", "bcave", "ccave"}, the calculated weights can become 0 for all observations, thus crash the program}
+
+\item{delta}{a small positive number provided by user only if \code{cfun="gcave"} and \code{0 < s <1}}
 
 \item{iter}{number of iteration in the IRCO algorithm}
 
@@ -59,9 +66,10 @@ In particularly, there is only one parameter psi and set to 1. The implementatio
 \value{
 An object with S3 class \code{xgboost} with the additional elments:
 \itemize{
-  \item \code{weight_update_log} a matrix of \code{nobs} row by {iter}      column of observation weights in each iteration of the IRCO algorithm
+  \item \code{weight_update_log} a matrix of \code{nobs} row by \code{iter}      column of observation weights in each iteration of the IRCO algorithm
   \item \code{weight_update} a vector of observation weights in the last IRCO iteration that produces the final model fit
-  \item\code{loss_log}{sum of loss value of the composite function \code{cfun(dfun)} in each IRCO iteration. Note, \code{cfun} requires \code{dfun} non-negative in some cases. Thus some \code{dfun} needs attentions. For instance, with \code{dfun="reg:gamma"}, the loss value is defined gamma-nloglik - (1+log(min(y))). The second term is introduced such that the loss value is non-negative. In fact, gamma-nloglik=y/ypre + log(ypre) in the \code{xgboost}, where ypre is the mean prediction value, can be negative. It can be derived that for fixed \code{y}, the minimum value of gamma-nloglik is achived at ypre=y, or 1+log(y). Thus, among all \code{y} values, the minimum of gamma-nloglik is 1+log(min(y)).}
+  \item\code{loss_log} sum of loss value of the composite function in each IRCO iteration. Note, \code{cfun} requires \code{objective} non-negative in some cases. Thus care must be taken. For instance, with \code{objective="reg:gamma"}, the loss value is defined by gamma-nloglik - (1+log(min(y))), where y=label. The second term is introduced such that the loss value is non-negative. In fact, gamma-nloglik=y/ypre + log(ypre) in the \code{xgboost}, where ypre is the mean prediction value, can
+  be negative. It can be derived that for fixed \code{y}, the minimum value of gamma-nloglik is achived at ypre=y, or 1+log(y). Thus, among all \code{label} values, the minimum of gamma-nloglik is 1+log(min(y)).
 }
 }
 \description{
@@ -70,69 +78,64 @@ linear models and extensions, where the mean is related to the predictors by boo
 }
 \examples{
 \donttest{
-# regression, logistic regression, hinge regression, Poisson regression
+# regression, logistic regression, Poisson regression
 x <- matrix(rnorm(100*2),100,2)
 g2 <- sample(c(0,1),100,replace=TRUE)
-fit1 <- irboost(x, g2, cfun="acave",s=0.5, dfun="reg:squarederror", trace=TRUE, 
-                verbose=0, max.depth=1, nrounds=50)
-fit2 <- irboost(x, g2, cfun="acave",s=0.5, dfun="binary:logitraw", trace=TRUE,  
-                verbose=0, max.depth=1, nrounds=50)
-fit3 <- irboost(x, g2, cfun="acave",s=0.5, dfun="binary:hinge", trace=TRUE,  
-                verbose=0, max.depth=1, nrounds=50)
-fit4 <- irboost(x, g2, cfun="acave",s=0.5, dfun="count:poisson", trace=TRUE,      
-                verbose=0, max.depth=1, nrounds=50)
+fit1 <- irboost(data=x, label=g2, cfun="acave",s=0.5, 
+                params=list(objective="reg:squarederror", max_depth=1), trace=TRUE, 
+                verbose=0, nrounds=50)
+fit2 <- irboost(data=x, label=g2, cfun="acave",s=0.5, 
+                params=list(objective="binary:logitraw", max_depth=1), trace=TRUE,  
+                verbose=0, nrounds=50)
+fit3 <- irboost(data=x, label=g2, cfun="acave",s=0.5, 
+                params=list(objective="binary:hinge", max_depth=1), trace=TRUE,  
+                verbose=0, nrounds=50)
+fit4 <- irboost(data=x, label=g2, cfun="acave",s=0.5, 
+                params=list(objective="count:poisson", max_depth=1), trace=TRUE,      
+                verbose=0, nrounds=50)
 
 # Gamma regression
 x <- matrix(rnorm(100*2),100,2)
 g2 <- sample(rgamma(100, 1))
 library("xgboost")
-fit5 <- xgboost(x, g2, objective="reg:gamma", max.depth=1, nrounds=50)
-fit6 <- irboost(x, g2, cfun="acave",s=5, dfun="reg:gamma", trace=TRUE, 
-                verbose=0, max.depth=1, nrounds=50)
-plot(predict(fit5, x), predict(fit6, x))
+param <- list(objective="reg:gamma", max_depth=1)
+fit5 <- xgboost(data=x, label=g2, params=param, nrounds=50)
+fit6 <- irboost(data=x, label=g2, cfun="acave",s=5, params=param, trace=TRUE, 
+                verbose=0, nrounds=50)
+plot(predict(fit5, newdata=x), predict(fit6, newdata=x))
 hist(fit6$weight_update)
 plot(fit6$loss_log)
 summary(fit6$weight_update)
 
 # Tweedie regression 
-fit6t <- irboost(x, g2, cfun="acave",s=5, dfun="reg:tweedie", trace=TRUE, 
-                verbose=0, max.depth=1, nrounds=50)
+param <- list(objective="reg:tweedie", max_depth=1)
+fit6t <- irboost(data=x, label=g2, cfun="acave",s=5, params=param, 
+                 trace=TRUE, verbose=0, nrounds=50)
 # Gamma vs Tweedie regression
 hist(fit6$weight_update)
 hist(fit6t$weight_update)
-plot(predict(fit6, x), predict(fit6t, x))
+plot(predict(fit6, newdata=x), predict(fit6t, newdata=x))
 
 # multiclass classification in iris dataset:
 lb <- as.numeric(iris$Species)-1
 num_class <- 3
 set.seed(11)
 
-# xgboost
-bst <- xgboost(data=as.matrix(iris[, -5]), label=lb,
-max_depth=4, eta=0.5, nthread=2, nrounds=10, subsample=0.5,
-objective="multi:softprob", num_class=num_class)
+param <- list(objective="multi:softprob", max_depth=4, eta=0.5, nthread=2, 
+subsample=0.5, num_class=num_class)
+fit7 <- irboost(data=as.matrix(iris[, -5]), label=lb, cfun="acave", s=50,
+                params=param, trace=TRUE, verbose=0, nrounds=10)
 # predict for softmax returns num_class probability numbers per case:
-pred <- predict(bst, as.matrix(iris[, -5]))
+pred7 <- predict(fit7, newdata=as.matrix(iris[, -5]))
 # reshape it to a num_class-columns matrix
-pred <- matrix(pred, ncol=num_class, byrow=TRUE)
-# convert the probabilities to softmax labels
-pred_labels <- max.col(pred)-1
-# classification error
-sum(pred_labels!=lb)/length(lb)
-
-# irboost
-fit7 <- irboost(x=as.matrix(iris[, -5]), y=lb, cfun="acave", s=50,
-                dfun="multi:softprob", trace=TRUE, verbose=0, 
-                max.depth=4, eta=0.5, nthread=2, nrounds=10, 
-                subsample=0.5, num_class=num_class)
-pred7 <- predict(fit7, as.matrix(iris[, -5]))
 pred7 <- matrix(pred7, ncol=num_class, byrow=TRUE)
 # convert the probabilities to softmax labels
 pred7_labels <- max.col(pred7) - 1
 # classification error: 0!
 sum(pred7_labels != lb)/length(lb)
-table(pred_labels, pred7_labels)
-hist(fit6$weight_update)
+table(lb, pred7_labels)
+hist(fit7$weight_update)
+
 }
 }
 \references{
