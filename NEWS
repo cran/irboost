@@ -37,7 +37,13 @@ output:
   o  change $ to $$ in a text file
      sed -i 's/\$/\$\$/g' your_file.txt
   o  some parameters in R/irboost.R are now moved to a new argument params, a list of parameters. The argument params in irboost is passed to argument params in xgboost::xgboost
+                
                 CHANGES in `irboost' VERSION 0.1_1.5   (2024-04-17)
 
   o  move the code part of irbst_knitr.Rmd to irbst_code.Rmd
   o  remove irbst.Rnw, irbst_jds.tex, irbst_knitr.Rmd and associated latex format files
+                
+                CHANGES in `irboost' VERSION 0.2_1.0   (2025-02-04)
+
+  o  minor update vignette/irbst_code.Rmd
+  o  update the reference with published paper: Unified robust boosting

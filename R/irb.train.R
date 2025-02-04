@@ -39,7 +39,7 @@
 #'   be negative. It can be derived that for fixed \code{y}, the minimum value of gamma-nloglik is achived at ypre=y, or 1+log(y). Thus, among all \code{label} values, the minimum of gamma-nloglik is 1+log(min(y)).
 #'}
 #' @author Zhu Wang\cr Maintainer: Zhu Wang \email{zhuwang@gmail.com}
-#' @references Wang, Zhu (2021), \emph{Unified Robust Boosting}, arXiv eprint, \url{https://arxiv.org/abs/2101.07718}
+#' @references Wang, Zhu (2021), \emph{Unified Robust Boosting}, Journal of Data Science (2024), 1-19, DOI 10.6339/24-JDS1138
 #' @keywords regression classification
 #' @export irb.train
 #' @examples
