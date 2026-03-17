@@ -5,7 +5,7 @@
 #' @param nte number of test data
 #' @param percon proportion of contamination, must between 0 and 1. If \code{percon > 0}, the labels of the corresponding percenrage of response variable in the training and tuning data are flipped.
 #' @return a list with elements xtr, xtu, xte, ytr, ytu, yte for predictors of disjoint training, tuning and test data, and response variable -1/1 of training, tuning and test data.
-#' @author Zhu Wang\cr Maintainer: Zhu Wang \email{zhuwang@gmail.com}
+#' @author Zhu Wang\cr Maintainer: Zhu Wang \email{zwang145@uthsc.edu}
 #' @references P. Long and R. Servedio (2010), \emph{Random classification noise defeats all convex potential boosters}, \emph{Machine Learning Journal}, 78(3), 287--304.
 #' @keywords classification
 #' @export dataLS

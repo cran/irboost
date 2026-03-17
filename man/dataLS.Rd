@@ -28,6 +28,6 @@ dat <- dataLS(ntr=100, nte=100, percon=0)
 P. Long and R. Servedio (2010), \emph{Random classification noise defeats all convex potential boosters}, \emph{Machine Learning Journal}, 78(3), 287--304.
 }
 \author{
-Zhu Wang\cr Maintainer: Zhu Wang \email{zhuwang@gmail.com}
+Zhu Wang\cr Maintainer: Zhu Wang \email{zwang145@uthsc.edu}
 }
 \keyword{classification}

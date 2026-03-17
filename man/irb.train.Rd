@@ -70,17 +70,25 @@ Fit a predictive model with the iteratively reweighted convex optimization (IRCO
 linear models and extensions, where the mean is related to the predictors by boosting, and robust accelerated failure time models. \code{irb.train} is an advanced interface for training an irboost model. The \code{irboost} function is a simpler wrapper for \code{irb.train}. See \code{xgboost::xgb.train}.
 }
 \examples{
-\donttest{
+\dontrun{
+Sys.setenv(
+  OMP_NUM_THREADS = "1",
+  OMP_THREAD_LIMIT = "1",
+  OPENBLAS_NUM_THREADS = "1",
+  MKL_NUM_THREADS = "1",
+  VECLIB_MAXIMUM_THREADS = "1",
+  BLIS_NUM_THREADS = "1"
+)
 # logistic boosting
 data(agaricus.train, package='xgboost')
 data(agaricus.test, package='xgboost')
 
-dtrain <- with(agaricus.train, xgboost::xgb.DMatrix(data, label = label))
-dtest <- with(agaricus.test, xgboost::xgb.DMatrix(data, label = label))
+dtrain <- with(agaricus.train, xgboost::xgb.DMatrix(data, label = label, nthread = 1))
+dtest <- with(agaricus.test, xgboost::xgb.DMatrix(data, label = label, nthread = 1))
 watchlist <- list(train = dtrain, eval = dtest)
 
 # A simple irb.train example:
-param <- list(max_depth = 2, eta = 1, nthread = 2, 
+param <- list(max_depth = 2, eta = 1, nthread = 1, 
 objective = "binary:logitraw", eval_metric = "auc")
 bst <- xgboost::xgb.train(params=param, data=dtrain, nrounds = 2, 
                           watchlist=watchlist, verbose=2)
@@ -99,7 +107,7 @@ y_lower = c(10,  15, -Inf, 30, 100)
 y_upper = c(Inf, Inf,   20, 50, Inf)
 dtrain <- xgboost::xgb.DMatrix(data=X, label_lower_bound=y_lower, 
                                label_upper_bound=y_upper)
-param <- list(objective="survival:aft", aft_loss_distribution="normal", 
+param <- list(objective="survival:aft", nthread=1, aft_loss_distribution="normal", 
               aft_loss_distribution_scale=1, max_depth=3, min_child_weight=0)
 watchlist <- list(train = dtrain)
 bst <- xgboost::xgb.train(params=param, data=dtrain, nrounds=15, 
@@ -111,10 +119,10 @@ bst_cc$weight_update
 }
 }
 \references{
-Wang, Zhu (2021), \emph{Unified Robust Boosting}, arXiv eprint, \url{https://arxiv.org/abs/2101.07718}
+Wang, Zhu (2021), \emph{Unified Robust Boosting}, Journal of Data Science (2024), 1-19, DOI 10.6339/24-JDS1138
 }
 \author{
-Zhu Wang\cr Maintainer: Zhu Wang \email{zhuwang@gmail.com}
+Zhu Wang\cr Maintainer: Zhu Wang \email{zwang145@uthsc.edu}
 }
 \keyword{classification}
 \keyword{regression}

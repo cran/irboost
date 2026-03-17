@@ -41,33 +41,41 @@
 #'   \item\code{loss_log} sum of loss value of the composite function in each IRCO iteration. Note, \code{cfun} requires \code{objective} non-negative in some cases. Thus care must be taken. For instance, with \code{objective="reg:gamma"}, the loss value is defined by gamma-nloglik - (1+log(min(y))), where y=label. The second term is introduced such that the loss value is non-negative. In fact, gamma-nloglik=y/ypre + log(ypre) in the \code{xgboost}, where ypre is the mean prediction value, can
 #'   be negative. It can be derived that for fixed \code{y}, the minimum value of gamma-nloglik is achived at ypre=y, or 1+log(y). Thus, among all \code{label} values, the minimum of gamma-nloglik is 1+log(min(y)).
 #'}
-#' @author Zhu Wang\cr Maintainer: Zhu Wang \email{zhuwang@gmail.com}
+#' @author Zhu Wang\cr Maintainer: Zhu Wang \email{zwang145@uthsc.edu}
 #' @references Wang, Zhu (2024), \emph{Unified Robust Boosting}, Zhu Wang, Unified Robust Boosting, Journal of Data Science (2024), 1-19, DOI 10.6339/24-JDS1138
 #' @keywords regression classification
 #' @export irboost
 #' @examples
-#' \donttest{
+#' \dontrun{
+#' Sys.setenv(
+#'   OMP_NUM_THREADS = "1",
+#'   OMP_THREAD_LIMIT = "1",
+#'   OPENBLAS_NUM_THREADS = "1",
+#'   MKL_NUM_THREADS = "1",
+#'   VECLIB_MAXIMUM_THREADS = "1",
+#'   BLIS_NUM_THREADS = "1"
+#' )
 #' # regression, logistic regression, Poisson regression
 #' x <- matrix(rnorm(100*2),100,2)
 #' g2 <- sample(c(0,1),100,replace=TRUE)
 #' fit1 <- irboost(data=x, label=g2, cfun="acave",s=0.5, 
-#'                 params=list(objective="reg:squarederror", max_depth=1), trace=TRUE, 
+#'                 params=list(objective="reg:squarederror", max_depth=1, nthread=1), trace=TRUE, 
 #'                 verbose=0, nrounds=50)
 #' fit2 <- irboost(data=x, label=g2, cfun="acave",s=0.5, 
-#'                 params=list(objective="binary:logitraw", max_depth=1), trace=TRUE,  
+#'                 params=list(objective="binary:logitraw", max_depth=1, nthread=1), trace=TRUE,  
 #'                 verbose=0, nrounds=50)
 #' fit3 <- irboost(data=x, label=g2, cfun="acave",s=0.5, 
-#'                 params=list(objective="binary:hinge", max_depth=1), trace=TRUE,  
+#'                 params=list(objective="binary:hinge", max_depth=1, nthread=1), trace=TRUE,  
 #'                 verbose=0, nrounds=50)
 #' fit4 <- irboost(data=x, label=g2, cfun="acave",s=0.5, 
-#'                 params=list(objective="count:poisson", max_depth=1), trace=TRUE,      
+#'                 params=list(objective="count:poisson", max_depth=1, nthread=1), trace=TRUE,      
 #'                 verbose=0, nrounds=50)
 #'
 #' # Gamma regression
 #' x <- matrix(rnorm(100*2),100,2)
 #' g2 <- sample(rgamma(100, 1))
 #' library("xgboost")
-#' param <- list(objective="reg:gamma", max_depth=1)
+#' param <- list(objective="reg:gamma", max_depth=1, nthread=1)
 #' fit5 <- xgboost(data=x, label=g2, params=param, nrounds=50)
 #' fit6 <- irboost(data=x, label=g2, cfun="acave",s=5, params=param, trace=TRUE, 
 #'                 verbose=0, nrounds=50)
@@ -77,7 +85,7 @@
 #' summary(fit6$weight_update)
 #' 
 #' # Tweedie regression 
-#' param <- list(objective="reg:tweedie", max_depth=1)
+#' param <- list(objective="reg:tweedie", max_depth=1, nthread=1)
 #' fit6t <- irboost(data=x, label=g2, cfun="acave",s=5, params=param, 
 #'                  trace=TRUE, verbose=0, nrounds=50)
 #' # Gamma vs Tweedie regression
@@ -90,7 +98,7 @@
 #' num_class <- 3
 #' set.seed(11)
 #' 
-#' param <- list(objective="multi:softprob", max_depth=4, eta=0.5, nthread=2, 
+#' param <- list(objective="multi:softprob", max_depth=4, eta=0.5, nthread=1, 
 #' subsample=0.5, num_class=num_class)
 #' fit7 <- irboost(data=as.matrix(iris[, -5]), label=lb, cfun="acave", s=50,
 #'                 params=param, trace=TRUE, verbose=0, nrounds=10)
@@ -109,6 +117,7 @@
 irboost <- function(data, label, weights, params = list(), z_init=NULL, cfun="ccave", s=1, delta=0.1, iter=10, nrounds=100, del=1e-10, trace=FALSE, ...){
   call <- match.call()
   dfun <- params$objective
+  if (is.null(params$nthread)) params$nthread <- 1L
   if(dfun=="survival:aft"){
   return(irb.train_aft(params=params, data=data, cfun=cfun, s=s, delta=delta, iter=iter, nrounds=nrounds, del=del, trace=trace, ...))
   }
@@ -149,6 +158,10 @@ irboost <- function(data, label, weights, params = list(), z_init=NULL, cfun="cc
   n <- length(y)
   weight_update_log <- matrix(NA, nrow=n, ncol=iter)
   if(missing(weights)) weights <- rep(1, n)
+  # Some xgboost builds may use multiple threads during DMatrix construction
+  # even when training uses nthread=1. Pass nthread explicitly to avoid
+  # multi-core usage in examples and checks.
+  dtrain <- xgboost::xgb.DMatrix(data=x, label=y, weight=weights, nthread=params$nthread)
   if(is.null(z_init)) ylos <- weights else ylos <- z_init #initial values
   if(dfun=="reg:gamma")
     min_nloglik <- 1+log(min(y)) #the minimum value of negative log-likelihood value for a fixed y vector
@@ -158,8 +171,9 @@ irboost <- function(data, label, weights, params = list(), z_init=NULL, cfun="cc
     weight_update <- mpath::compute_wt(ylos, weights, cfunval, s, delta)
     weight_update_log[,k] <- weight_update
     #if(trace) cat("weight_update", weight_update, "\n")
-    RET <- xgboost::xgboost(data=x, label=y, missing = NA, weight=weight_update, params = params, nrounds=nrounds, ...)
-    ypre <- predict(RET, x) #depends on objective, this is probability or response or linear predictor
+    xgboost::setinfo(dtrain, "weight", weight_update)
+    RET <- xgboost::xgb.train(params = params, data=dtrain, nrounds=nrounds, ...)
+    ypre <- predict(RET, newdata=dtrain) #depends on objective, this is probability or response or linear predictor
     #update loss values
     if(dfun=="reg:squarederror"){
       ylos <- (ynew - ypre)^2/2
@@ -170,24 +184,26 @@ irboost <- function(data, label, weights, params = list(), z_init=NULL, cfun="cc
     }else if(dfun=="binary:hinge"){
       ylos <- pmax(0, 1- ynew * ypre)
     }else if(dfun=="multi:softprob"){
-      num_class <- RET$params$num_class
-      # reshape it to a num_class-columns matrix
-      ypre <- matrix(ypre, ncol=num_class, byrow=TRUE)
+      num_class <- params$num_class
+      # xgboost changed the ordering of multi:softprob predictions across versions.
+      # Reshape defensively so each row corresponds to one observation's class probs.
+      ypre <- .reshape_softprob(ypre, n = n, num_class = num_class)
       ylos <- rep(NA, n)
       for(i in 1:n)
         ylos[i] = - log(ypre[i, y[i]+1]) # label y is coded as in [0, num_class-1]
     }else if(dfun %in% c("count:poisson")){
-      ylos <- loss3(ynew, mu=ypre, theta=1, weights, cfunval, family=3, s, delta)$z
+      mu <- pmax(ypre, .Machine$double.eps)
+      ylos <- loss3(ynew, mu=mu, theta=1, weights, cfunval, family=3, s, delta)$z
     }else if(dfun %in% c("reg:gamma")){
       ylos <- y/ypre+log(ypre) #negative log-likelihood value with "parameter"=1 in xgboost
       ylos <- ylos - min_nloglik #to shift the values to non-negative
     }else if(dfun %in% c("reg:tweedie")){
-        #extract tweedie_variance_power
-        rho <- substring(names(RET$evaluation_log[2]), 23)
-        rho <- as.numeric(rho)
-        a <- y * exp((1-rho)*log(ypre))/(1-rho)
-        b <-     exp((2-rho)*log(ypre))/(2-rho)
-        ylos <- - a + b
+      rho <- params$tweedie_variance_power
+      if(is.null(rho)) rho <- 1.5
+      mu <- pmax(ypre, .Machine$double.eps)
+      a <- y * exp((1-rho)*log(mu))/(1-rho)
+      b <-     exp((2-rho)*log(mu))/(2-rho)
+      ylos <- - a + b
     }
     loss_log[k] <- sum(mpath::compute_g(ylos, cfunval, s, delta))
     if(k > 1){
@@ -198,11 +214,16 @@ irboost <- function(data, label, weights, params = list(), z_init=NULL, cfun="cc
     if(trace) cat("loss=", loss_log[k], "d=", d, "\n") 
     k <- k + 1
   }
-  RET$x <- x
-  RET$y <- y
-  RET$call <- call
-  RET$weight_update_log <- weight_update_log
-  RET$weight_update <- weight_update
-  RET$loss_log <- loss_log
-  RET
+  out <- list(
+    model = RET,
+    params = params,
+    x = x,
+    y = y,
+    call = call,
+    weight_update_log = weight_update_log,
+    weight_update = weight_update,
+    loss_log = loss_log
+  )
+  class(out) <- "irboost_model"
+  out
 }

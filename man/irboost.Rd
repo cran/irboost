@@ -77,28 +77,36 @@ Fit a predictive model with the iteratively reweighted convex optimization (IRCO
 linear models and extensions, where the mean is related to the predictors by boosting, and robust accelerated failure time models.
 }
 \examples{
-\donttest{
+\dontrun{
+Sys.setenv(
+  OMP_NUM_THREADS = "1",
+  OMP_THREAD_LIMIT = "1",
+  OPENBLAS_NUM_THREADS = "1",
+  MKL_NUM_THREADS = "1",
+  VECLIB_MAXIMUM_THREADS = "1",
+  BLIS_NUM_THREADS = "1"
+)
 # regression, logistic regression, Poisson regression
 x <- matrix(rnorm(100*2),100,2)
 g2 <- sample(c(0,1),100,replace=TRUE)
 fit1 <- irboost(data=x, label=g2, cfun="acave",s=0.5, 
-                params=list(objective="reg:squarederror", max_depth=1), trace=TRUE, 
+                params=list(objective="reg:squarederror", max_depth=1, nthread=1), trace=TRUE, 
                 verbose=0, nrounds=50)
 fit2 <- irboost(data=x, label=g2, cfun="acave",s=0.5, 
-                params=list(objective="binary:logitraw", max_depth=1), trace=TRUE,  
+                params=list(objective="binary:logitraw", max_depth=1, nthread=1), trace=TRUE,  
                 verbose=0, nrounds=50)
 fit3 <- irboost(data=x, label=g2, cfun="acave",s=0.5, 
-                params=list(objective="binary:hinge", max_depth=1), trace=TRUE,  
+                params=list(objective="binary:hinge", max_depth=1, nthread=1), trace=TRUE,  
                 verbose=0, nrounds=50)
 fit4 <- irboost(data=x, label=g2, cfun="acave",s=0.5, 
-                params=list(objective="count:poisson", max_depth=1), trace=TRUE,      
+                params=list(objective="count:poisson", max_depth=1, nthread=1), trace=TRUE,      
                 verbose=0, nrounds=50)
 
 # Gamma regression
 x <- matrix(rnorm(100*2),100,2)
 g2 <- sample(rgamma(100, 1))
 library("xgboost")
-param <- list(objective="reg:gamma", max_depth=1)
+param <- list(objective="reg:gamma", max_depth=1, nthread=1)
 fit5 <- xgboost(data=x, label=g2, params=param, nrounds=50)
 fit6 <- irboost(data=x, label=g2, cfun="acave",s=5, params=param, trace=TRUE, 
                 verbose=0, nrounds=50)
@@ -108,7 +116,7 @@ plot(fit6$loss_log)
 summary(fit6$weight_update)
 
 # Tweedie regression 
-param <- list(objective="reg:tweedie", max_depth=1)
+param <- list(objective="reg:tweedie", max_depth=1, nthread=1)
 fit6t <- irboost(data=x, label=g2, cfun="acave",s=5, params=param, 
                  trace=TRUE, verbose=0, nrounds=50)
 # Gamma vs Tweedie regression
@@ -121,7 +129,7 @@ lb <- as.numeric(iris$Species)-1
 num_class <- 3
 set.seed(11)
 
-param <- list(objective="multi:softprob", max_depth=4, eta=0.5, nthread=2, 
+param <- list(objective="multi:softprob", max_depth=4, eta=0.5, nthread=1, 
 subsample=0.5, num_class=num_class)
 fit7 <- irboost(data=as.matrix(iris[, -5]), label=lb, cfun="acave", s=50,
                 params=param, trace=TRUE, verbose=0, nrounds=10)
@@ -139,10 +147,10 @@ hist(fit7$weight_update)
 }
 }
 \references{
-Wang, Zhu (2021), \emph{Unified Robust Boosting}, arXiv eprint, \url{https://arxiv.org/abs/2101.07718}
+Wang, Zhu (2024), \emph{Unified Robust Boosting}, Zhu Wang, Unified Robust Boosting, Journal of Data Science (2024), 1-19, DOI 10.6339/24-JDS1138
 }
 \author{
-Zhu Wang\cr Maintainer: Zhu Wang \email{zhuwang@gmail.com}
+Zhu Wang\cr Maintainer: Zhu Wang \email{zwang145@uthsc.edu}
 }
 \keyword{classification}
 \keyword{regression}

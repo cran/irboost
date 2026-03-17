@@ -38,9 +38,20 @@
 #' #          uncensored  right  left  interval
 #' y_lower = c(10,  15, -Inf, 30, 100)
 #' y_upper = c(Inf, Inf,   20, 50, Inf)
-#' dtrain <- xgb.DMatrix(data=X, label_lower_bound=y_lower, label_upper_bound=y_upper)
-#'                       params = list(objective="survival:aft", aft_loss_distribution="normal",
-#'                       aft_loss_distribution_scale=1, max_depth=3, min_child_weight= 0)
+#' dtrain <- xgb.DMatrix(
+#'   data = X,
+#'   label_lower_bound = y_lower,
+#'   label_upper_bound = y_upper,
+#'   nthread = 1
+#' )
+#' params <- list(
+#'   objective = "survival:aft",
+#'   nthread = 1,
+#'   aft_loss_distribution = "normal",
+#'   aft_loss_distribution_scale = 1,
+#'   max_depth = 3,
+#'   min_child_weight = 0
+#' )
 #' watchlist <- list(train = dtrain)
 #' bst <- xgb.train(params, data=dtrain, nrounds=15, watchlist=watchlist)
 #' predict(bst, dtrain)
@@ -53,7 +64,7 @@
 #' @seealso
 #' \code{\link{irboost}}
 #'
-#' @author Zhu Wang\cr Maintainer: Zhu Wang \email{zhuwang@gmail.com}
+#' @author Zhu Wang\cr Maintainer: Zhu Wang \email{zwang145@uthsc.edu}
 #' @references Wang, Zhu (2021), \emph{Unified Robust Boosting}, Journal of Data Science (2024), 1-19, DOI 10.6339/24-JDS1138
 #' @keywords regression survival
 #' @export irb.train_aft
@@ -61,6 +72,7 @@
 irb.train_aft <- function(params=list(), data, z_init=NULL, cfun="ccave", s=1, delta=0.1, iter=10, nrounds=100, del=1e-10, trace=FALSE, ...){
    call <- match.call()
    params$objective <- "survival:aft"
+   if (is.null(params$nthread)) params$nthread <- 1L
    if(params$objective!="survival:aft") warnings("params$objective is supposed to be survival:aft")
    cfunval <- eval(parse(text="mpath::cfun2num(cfun)"))
    d <- 10
@@ -102,10 +114,14 @@ irb.train_aft <- function(params=list(), data, z_init=NULL, cfun="ccave", s=1, d
       if(trace) cat("loss=", loss_log[k], "d=", d, "\n")
       k <- k + 1
    }
-   RET$call <- call
-   RET$weight_update_log <- weight_update_log
-   RET$weight_update <- weight_update
-   RET$loss_log <- loss_log
-   RET
+   out <- list(
+      model = RET,
+      params = params,
+      call = call,
+      weight_update_log = weight_update_log,
+      weight_update = weight_update,
+      loss_log = loss_log
+   )
+   class(out) <- "irboost_model"
+   out
 }
-

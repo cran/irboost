@@ -47,3 +47,55 @@ output:
 
   o  minor update vignette/irbst_code.Rmd
   o  update the reference with published paper: Unified robust boosting
+                
+                CHANGES in `irboost' VERSION 0.2_1.1   (2026-03-15)
+
+  o  Compatibility updates for newer xgboost (tested with xgboost 3.2.0.1) to
+     preserve behavior observed with older xgboost (e.g., 1.7.10.1).
+
+  o  Fix multi-class softmax objective (objective="multi:softprob") for newer
+     xgboost where the returned soft-probability vector ordering differs from
+     older versions:
+       - add internal helper .reshape_softprob() to detect the correct ordering
+         (by observation vs by class) using the row-sum-to-1 property.
+       - update irboost() and irb.train() loss calculations to use the reshaped
+         probability matrix so robust weights are computed consistently.
+       - update predict.irboost_model() to return multi:softprob predictions in
+         the historical "by observation" order so existing user code that does
+         matrix(pred, ncol=num_class, byrow=TRUE) remains valid.
+       - avoid reliance on non-exported xgboost helper APIs (e.g.,
+         xgboost::xgb.parameters) so R CMD check does not warn about missing or
+         unexported objects; multi:softprob output is detected by length and
+         normalized accordingly.
+       - store training params in returned irboost_model objects (new element
+         `params`) for reliable downstream behavior (e.g., predict).
+
+  o  Ensure single-threaded behavior by default for CRAN checks and for
+     reproducibility:
+       - if params$nthread is not supplied, set params$nthread <- 1 in
+         irboost(), irb.train(), and irb.train_aft().
+       - update Rd examples to use nthread=1 and set common thread environment
+         variables (OMP_NUM_THREADS, OPENBLAS_NUM_THREADS, MKL_NUM_THREADS, etc.)
+         to avoid "CPU time > elapsed time" check NOTES on multi-core machines.
+       - pass nthread explicitly to xgboost::xgb.DMatrix() inside irboost()
+         to prevent multi-threaded DMatrix construction from inflating CPU time.
+       - add OMP_THREAD_LIMIT=1 in Rd examples to further constrain OpenMP runtimes.
+
+  o  Fix and reformat irb.train_aft() examples (params assignment and line wraps)
+     to satisfy Rd line width checks and keep examples reproducible.
+
+  o  Vignette maintenance (vignettes/irbst_code.Rmd):
+       - switch to a static HTML vignette (static_irbst.html + .asis) to support
+         xgboost outputs that are HTML widgets (e.g., xgb.plot.tree()).
+       - replace deprecated xgboost::xgboost(..., params=...) usage with
+         xgboost::xgb.DMatrix + xgboost::xgb.train().
+       - make cross-validation output robust when best_iteration is NULL
+         (fallback to which.min on evaluation_log).
+       - remove network dependency by using MASS::Boston instead of downloading
+         the housing dataset at build time.
+       - minor reproducibility/timing cleanups (explicit tree_method="exact",
+         seeds, and misclassification rate reporting).
+
+  o  Update maintainer email address in DESCRIPTION and documentation.
+
+   

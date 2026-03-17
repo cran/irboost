@@ -67,9 +67,20 @@ X <- matrix(1:5, ncol=1)
 #          uncensored  right  left  interval
 y_lower = c(10,  15, -Inf, 30, 100)
 y_upper = c(Inf, Inf,   20, 50, Inf)
-dtrain <- xgb.DMatrix(data=X, label_lower_bound=y_lower, label_upper_bound=y_upper)
-                      params = list(objective="survival:aft", aft_loss_distribution="normal",
-                      aft_loss_distribution_scale=1, max_depth=3, min_child_weight= 0)
+dtrain <- xgb.DMatrix(
+  data = X,
+  label_lower_bound = y_lower,
+  label_upper_bound = y_upper,
+  nthread = 1
+)
+params <- list(
+  objective = "survival:aft",
+  nthread = 1,
+  aft_loss_distribution = "normal",
+  aft_loss_distribution_scale = 1,
+  max_depth = 3,
+  min_child_weight = 0
+)
 watchlist <- list(train = dtrain)
 bst <- xgb.train(params, data=dtrain, nrounds=15, watchlist=watchlist)
 predict(bst, dtrain)
@@ -81,13 +92,13 @@ predict(bst_cc, dtrain)
 
 }
 \references{
-Wang, Zhu (2021), \emph{Unified Robust Boosting}, arXiv eprint, \url{https://arxiv.org/abs/2101.07718}
+Wang, Zhu (2021), \emph{Unified Robust Boosting}, Journal of Data Science (2024), 1-19, DOI 10.6339/24-JDS1138
 }
 \seealso{
 \code{\link{irboost}}
 }
 \author{
-Zhu Wang\cr Maintainer: Zhu Wang \email{zhuwang@gmail.com}
+Zhu Wang\cr Maintainer: Zhu Wang \email{zwang145@uthsc.edu}
 }
 \keyword{regression}
 \keyword{survival}

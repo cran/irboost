@@ -38,22 +38,30 @@
 #'   \item\code{loss_log} sum of loss value of the composite function in each IRCO iteration. Note, \code{cfun} requires \code{objective} non-negative in some cases. Thus care must be taken. For instance, with \code{objective="reg:gamma"}, the loss value is defined by gamma-nloglik - (1+log(min(y))), where y=label. The second term is introduced such that the loss value is non-negative. In fact, gamma-nloglik=y/ypre + log(ypre) in the \code{xgboost::xgb.train}, where ypre is the mean prediction value, can
 #'   be negative. It can be derived that for fixed \code{y}, the minimum value of gamma-nloglik is achived at ypre=y, or 1+log(y). Thus, among all \code{label} values, the minimum of gamma-nloglik is 1+log(min(y)).
 #'}
-#' @author Zhu Wang\cr Maintainer: Zhu Wang \email{zhuwang@gmail.com}
+#' @author Zhu Wang\cr Maintainer: Zhu Wang \email{zwang145@uthsc.edu}
 #' @references Wang, Zhu (2021), \emph{Unified Robust Boosting}, Journal of Data Science (2024), 1-19, DOI 10.6339/24-JDS1138
 #' @keywords regression classification
 #' @export irb.train
 #' @examples
-#' \donttest{
+#' \dontrun{
+#' Sys.setenv(
+#'   OMP_NUM_THREADS = "1",
+#'   OMP_THREAD_LIMIT = "1",
+#'   OPENBLAS_NUM_THREADS = "1",
+#'   MKL_NUM_THREADS = "1",
+#'   VECLIB_MAXIMUM_THREADS = "1",
+#'   BLIS_NUM_THREADS = "1"
+#' )
 #' # logistic boosting
 #' data(agaricus.train, package='xgboost')
 #' data(agaricus.test, package='xgboost')
 #'
-#' dtrain <- with(agaricus.train, xgboost::xgb.DMatrix(data, label = label))
-#' dtest <- with(agaricus.test, xgboost::xgb.DMatrix(data, label = label))
+#' dtrain <- with(agaricus.train, xgboost::xgb.DMatrix(data, label = label, nthread = 1))
+#' dtest <- with(agaricus.test, xgboost::xgb.DMatrix(data, label = label, nthread = 1))
 #' watchlist <- list(train = dtrain, eval = dtest)
 #'
 #' # A simple irb.train example:
-#' param <- list(max_depth = 2, eta = 1, nthread = 2, 
+#' param <- list(max_depth = 2, eta = 1, nthread = 1, 
 #' objective = "binary:logitraw", eval_metric = "auc")
 #' bst <- xgboost::xgb.train(params=param, data=dtrain, nrounds = 2, 
 #'                           watchlist=watchlist, verbose=2)
@@ -72,7 +80,7 @@
 #' y_upper = c(Inf, Inf,   20, 50, Inf)
 #' dtrain <- xgboost::xgb.DMatrix(data=X, label_lower_bound=y_lower, 
 #'                                label_upper_bound=y_upper)
-#' param <- list(objective="survival:aft", aft_loss_distribution="normal", 
+#' param <- list(objective="survival:aft", nthread=1, aft_loss_distribution="normal", 
 #'               aft_loss_distribution_scale=1, max_depth=3, min_child_weight=0)
 #' watchlist <- list(train = dtrain)
 #' bst <- xgboost::xgb.train(params=param, data=dtrain, nrounds=15, 
@@ -85,6 +93,7 @@
 irb.train <- function(params = list(), data, z_init=NULL, cfun="ccave", s=1, delta=0.1, iter=10, nrounds=100, del=1e-10, trace=FALSE, ...){
   call <- match.call()
   dfun <- params$objective
+  if (is.null(params$nthread)) params$nthread <- 1L
   if(dfun=="survival:aft"){
   return(irb.train_aft(params=params, data=data, cfun=cfun, s=s, delta=delta, iter=iter, nrounds=nrounds, del=del, trace=trace, ...))
   }
@@ -150,23 +159,25 @@ irb.train <- function(params = list(), data, z_init=NULL, cfun="ccave", s=1, del
       ylos <- pmax(0, 1- ynew * ypre)
     }else if(dfun=="multi:softprob"){
       num_class <- RET$params$num_class
-      # reshape it to a num_class-columns matrix
-      ypre <- matrix(ypre, ncol=num_class, byrow=TRUE)
+      # xgboost changed the ordering of multi:softprob predictions across versions.
+      # Reshape defensively so each row corresponds to one observation's class probs.
+      ypre <- .reshape_softprob(ypre, n = n, num_class = num_class)
       ylos <- rep(NA, n)
       for(i in 1:n)
         ylos[i] = - log(ypre[i, y[i]+1]) # label y is coded as in [0, num_class-1]
     }else if(dfun %in% c("count:poisson")){
-      ylos <- loss3(ynew, mu=ypre, theta=1, weights, cfunval, family=3, s, delta)$z
+      mu <- pmax(ypre, .Machine$double.eps)
+      ylos <- loss3(ynew, mu=mu, theta=1, weights, cfunval, family=3, s, delta)$z
     }else if(dfun %in% c("reg:gamma")){
       ylos <- y/ypre+log(ypre) #negative log-likelihood value with "parameter"=1 in xgboost
       ylos <- ylos - min_nloglik #to shift the values to non-negative
     }else if(dfun %in% c("reg:tweedie")){
-        #extract tweedie_variance_power
-        rho <- substring(names(RET$evaluation_log[2]), 23)
-        rho <- as.numeric(rho)
-        a <- y * exp((1-rho)*log(ypre))/(1-rho)
-        b <-     exp((2-rho)*log(ypre))/(2-rho)
-        ylos <- - a + b
+      rho <- params$tweedie_variance_power
+      if(is.null(rho)) rho <- 1.5
+      mu <- pmax(ypre, .Machine$double.eps)
+      a <- y * exp((1-rho)*log(mu))/(1-rho)
+      b <-     exp((2-rho)*log(mu))/(2-rho)
+      ylos <- - a + b
     }
     loss_log[k] <- sum(mpath::compute_g(ylos, cfunval, s, delta))
     if(k > 1){
@@ -177,10 +188,15 @@ irb.train <- function(params = list(), data, z_init=NULL, cfun="ccave", s=1, del
     if(trace) cat("loss=", loss_log[k], "d=", d, "\n") 
     k <- k + 1
   }
-  RET$y <- y
-  RET$call <- call
-  RET$weight_update_log <- weight_update_log
-  RET$weight_update <- weight_update
-  RET$loss_log <- loss_log
-  RET
+  out <- list(
+    model = RET,
+    params = params,
+    y = y,
+    call = call,
+    weight_update_log = weight_update_log,
+    weight_update = weight_update,
+    loss_log = loss_log
+  )
+  class(out) <- "irboost_model"
+  out
 }
